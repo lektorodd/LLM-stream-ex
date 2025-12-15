@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LLM Token Visualizer</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🔮 LLM Token Visualizer</h1>
+            <p class="subtitle">Visualize how language models predict the next token</p>
+        </header>
+
+        <div class="controls">
+            <div class="input-group">
+                <label for="prompt">Enter your prompt:</label>
+                <input type="text" id="prompt" placeholder="Norway is a" value="Norway is a">
+            </div>
+
+            <div class="settings-row">
+                <div class="setting">
+                    <label for="temperature">Temperature: <span id="temp-value">0.7</span></label>
+                    <input type="range" id="temperature" min="0" max="2" step="0.1" value="0.7">
+                </div>
+
+                <div class="setting">
+                    <label for="top-tokens">Top tokens to show: <span id="top-tokens-value">10</span></label>
+                    <input type="range" id="top-tokens" min="3" max="20" step="1" value="10">
+                </div>
+
+                <div class="setting">
+                    <label for="api-key">OpenAI API Key:</label>
+                    <input type="password" id="api-key" placeholder="sk-...">
+                </div>
+            </div>
+
+            <div class="button-group">
+                <button id="predict-btn" class="btn btn-primary">Get Predictions</button>
+                <button id="next-btn" class="btn btn-secondary" disabled>Select Next Token</button>
+                <button id="reset-btn" class="btn btn-tertiary">Reset</button>
+            </div>
+        </div>
+
+        <div class="display-section">
+            <div class="current-text">
+                <h3>Current Text:</h3>
+                <div id="text-display" class="text-box">Norway is a</div>
+            </div>
+
+            <div class="selected-token">
+                <h3>Last Selected Token:</h3>
+                <div id="selected-display" class="token-highlight">
+                    <span class="token-text">-</span>
+                    <span class="token-prob">-</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="visualization">
+            <h3>Token Probability Distribution</h3>
+            <div class="chart-container">
+                <canvas id="tokenChart"></canvas>
+            </div>
+        </div>
+
+        <div class="info-panel">
+            <h4>ℹ️ How it works:</h4>
+            <ul>
+                <li><strong>Temperature</strong>: Controls randomness (0 = deterministic, 2 = very random)</li>
+                <li><strong>Click "Get Predictions"</strong> to see what tokens the model thinks should come next</li>
+                <li><strong>Click "Select Next Token"</strong> to sample a token based on the temperature setting</li>
+                <li><strong>Higher temperature</strong> = more likely to pick less probable tokens</li>
+            </ul>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
