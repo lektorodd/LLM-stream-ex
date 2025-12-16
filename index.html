@@ -6,6 +6,7 @@
     <title>LLM Token Visualizer</title>
     <link rel="stylesheet" href="styles.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script type="module" src="app.js"></script>
 </head>
 <body>
     <div class="container">
@@ -22,6 +23,15 @@
 
             <div class="settings-row">
                 <div class="setting">
+                    <label for="provider">Model Provider:</label>
+                    <select id="provider" class="provider-select">
+                        <option value="transformers">Transformers.js (Free, Local)</option>
+                        <option value="openai">OpenAI API</option>
+                    </select>
+                    <small class="provider-info" id="provider-info">Runs locally in your browser - no API key needed!</small>
+                </div>
+
+                <div class="setting">
                     <label for="temperature">Temperature: <span id="temp-value">0.7</span></label>
                     <input type="range" id="temperature" min="0" max="2" step="0.1" value="0.7">
                 </div>
@@ -31,10 +41,16 @@
                     <input type="range" id="top-tokens" min="3" max="20" step="1" value="10">
                 </div>
 
-                <div class="setting">
+                <div class="setting" id="api-key-setting" style="display: none;">
                     <label for="api-key">OpenAI API Key:</label>
                     <input type="password" id="api-key" placeholder="sk-...">
                 </div>
+            </div>
+
+            <div id="model-loading" class="model-loading" style="display: none;">
+                <div class="loading-spinner"></div>
+                <p>Loading model for first time... This may take 1-2 minutes.</p>
+                <small>The model will be cached for future use.</small>
             </div>
 
             <div class="button-group">
@@ -69,6 +85,7 @@
         <div class="info-panel">
             <h4>ℹ️ How it works:</h4>
             <ul>
+                <li><strong>Provider</strong>: Choose between free local inference (Transformers.js) or OpenAI API</li>
                 <li><strong>Temperature</strong>: Controls randomness (0 = deterministic, 2 = very random)</li>
                 <li><strong>Click "Get Predictions"</strong> to see what tokens the model thinks should come next</li>
                 <li><strong>Click "Select Next Token"</strong> to sample a token based on the temperature setting</li>
@@ -76,7 +93,5 @@
             </ul>
         </div>
     </div>
-
-    <script src="app.js"></script>
 </body>
 </html>

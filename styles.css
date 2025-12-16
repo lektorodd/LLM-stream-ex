@@ -59,7 +59,8 @@ label {
 }
 
 input[type="text"],
-input[type="password"] {
+input[type="password"],
+select {
     width: 100%;
     padding: 1rem;
     font-size: 1.3rem;
@@ -69,9 +70,23 @@ input[type="password"] {
 }
 
 input[type="text"]:focus,
-input[type="password"]:focus {
+input[type="password"]:focus,
+select:focus {
     outline: none;
     border-color: #667eea;
+}
+
+.provider-select {
+    background: white;
+    cursor: pointer;
+}
+
+.provider-info {
+    display: block;
+    margin-top: 0.5rem;
+    color: #48bb78;
+    font-size: 0.9rem;
+    font-weight: 600;
 }
 
 .settings-row {
@@ -312,4 +327,41 @@ input[type="range"]::-moz-range-thumb {
     .chart-container {
         height: 600px;
     }
+}
+
+/* Model loading indicator */
+.model-loading {
+    background: #e6f2ff;
+    border: 2px solid #667eea;
+    border-radius: 10px;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+    text-align: center;
+}
+
+.model-loading p {
+    font-size: 1.1rem;
+    color: #667eea;
+    font-weight: 600;
+    margin: 1rem 0 0.5rem 0;
+}
+
+.model-loading small {
+    color: #666;
+    font-size: 0.95rem;
+}
+
+.loading-spinner {
+    width: 50px;
+    height: 50px;
+    margin: 0 auto;
+    border: 5px solid #e2e8f0;
+    border-top: 5px solid #667eea;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
 }

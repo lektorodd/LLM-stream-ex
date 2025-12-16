@@ -1,5 +1,10 @@
 // LLM Token Visualizer
-// Main application logic
+// Main application logic with support for multiple providers
+
+import { pipeline, env } from 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2';
+
+// Disable local model loading, use CDN
+env.allowLocalModels = false;
 
 class TokenVisualizer {
     constructor() {
@@ -7,13 +12,24 @@ class TokenVisualizer {
         this.tokenProbabilities = [];
         this.chart = null;
         this.apiKey = localStorage.getItem('openai_api_key') || '';
+        this.provider = localStorage.getItem('provider') || 'transformers';
+        this.model = null;
+        this.modelLoading = false;
 
         this.initializeEventListeners();
         this.initializeChart();
-        this.loadApiKey();
+        this.loadSettings();
+        this.updateProviderUI();
     }
 
     initializeEventListeners() {
+        // Provider selection
+        document.getElementById('provider').addEventListener('change', (e) => {
+            this.provider = e.target.value;
+            localStorage.setItem('provider', this.provider);
+            this.updateProviderUI();
+        });
+
         // Temperature slider
         document.getElementById('temperature').addEventListener('input', (e) => {
             document.getElementById('temp-value').textContent = e.target.value;
@@ -46,9 +62,25 @@ class TokenVisualizer {
         });
     }
 
-    loadApiKey() {
+    loadSettings() {
         if (this.apiKey) {
             document.getElementById('api-key').value = this.apiKey;
+        }
+        document.getElementById('provider').value = this.provider;
+    }
+
+    updateProviderUI() {
+        const apiKeySection = document.getElementById('api-key-setting');
+        const providerInfo = document.getElementById('provider-info');
+
+        if (this.provider === 'openai') {
+            apiKeySection.style.display = 'flex';
+            providerInfo.textContent = 'Requires API key - faster and more capable';
+            providerInfo.style.color = '#667eea';
+        } else {
+            apiKeySection.style.display = 'none';
+            providerInfo.textContent = 'Runs locally in your browser - no API key needed!';
+            providerInfo.style.color = '#48bb78';
         }
     }
 
@@ -127,12 +159,32 @@ class TokenVisualizer {
         });
     }
 
-    async getPredictions() {
-        if (!this.apiKey) {
-            alert('Please enter your OpenAI API key first!');
-            return;
+    async loadTransformersModel() {
+        if (this.model || this.modelLoading) {
+            return this.model;
         }
 
+        this.modelLoading = true;
+        const loadingIndicator = document.getElementById('model-loading');
+        loadingIndicator.style.display = 'block';
+
+        try {
+            // Load GPT-2 model for token prediction
+            this.model = await pipeline('text-generation', 'Xenova/gpt2', {
+                revision: 'main',
+            });
+
+            loadingIndicator.style.display = 'none';
+            this.modelLoading = false;
+            return this.model;
+        } catch (error) {
+            loadingIndicator.style.display = 'none';
+            this.modelLoading = false;
+            throw error;
+        }
+    }
+
+    async getPredictions() {
         const promptInput = document.getElementById('prompt');
         this.currentText = promptInput.value;
         document.getElementById('text-display').textContent = this.currentText;
@@ -142,52 +194,14 @@ class TokenVisualizer {
         predictBtn.textContent = 'Loading...';
 
         try {
-            const temperature = parseFloat(document.getElementById('temperature').value);
-
-            // Call OpenAI API
-            const response = await fetch('https://api.openai.com/v1/completions', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${this.apiKey}`
-                },
-                body: JSON.stringify({
-                    model: 'gpt-3.5-turbo-instruct',
-                    prompt: this.currentText,
-                    max_tokens: 1,
-                    temperature: temperature,
-                    logprobs: 20,
-                    echo: false
-                })
-            });
-
-            if (!response.ok) {
-                const error = await response.json();
-                throw new Error(error.error?.message || 'API request failed');
-            }
-
-            const data = await response.json();
-
-            // Extract token probabilities
-            if (data.choices && data.choices[0] && data.choices[0].logprobs) {
-                const logprobs = data.choices[0].logprobs;
-                const topLogprobs = logprobs.top_logprobs[0];
-
-                // Convert logprobs to probabilities
-                this.tokenProbabilities = Object.entries(topLogprobs).map(([token, logprob]) => ({
-                    token: token,
-                    logprob: logprob,
-                    probability: Math.exp(logprob) * 100
-                }));
-
-                // Sort by probability (highest first)
-                this.tokenProbabilities.sort((a, b) => b.probability - a.probability);
-
-                this.updateChart();
-                document.getElementById('next-btn').disabled = false;
+            if (this.provider === 'openai') {
+                await this.getPredictionsOpenAI();
             } else {
-                throw new Error('No logprobs in response');
+                await this.getPredictionsTransformers();
             }
+
+            this.updateChart();
+            document.getElementById('next-btn').disabled = false;
 
         } catch (error) {
             console.error('Error:', error);
@@ -196,6 +210,108 @@ class TokenVisualizer {
             predictBtn.disabled = false;
             predictBtn.textContent = 'Get Predictions';
         }
+    }
+
+    async getPredictionsOpenAI() {
+        if (!this.apiKey) {
+            throw new Error('Please enter your OpenAI API key first!');
+        }
+
+        const temperature = parseFloat(document.getElementById('temperature').value);
+
+        const response = await fetch('https://api.openai.com/v1/completions', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${this.apiKey}`
+            },
+            body: JSON.stringify({
+                model: 'gpt-3.5-turbo-instruct',
+                prompt: this.currentText,
+                max_tokens: 1,
+                temperature: temperature,
+                logprobs: 20,
+                echo: false
+            })
+        });
+
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.error?.message || 'API request failed');
+        }
+
+        const data = await response.json();
+
+        if (data.choices && data.choices[0] && data.choices[0].logprobs) {
+            const logprobs = data.choices[0].logprobs;
+            const topLogprobs = logprobs.top_logprobs[0];
+
+            this.tokenProbabilities = Object.entries(topLogprobs).map(([token, logprob]) => ({
+                token: token,
+                logprob: logprob,
+                probability: Math.exp(logprob) * 100
+            }));
+
+            this.tokenProbabilities.sort((a, b) => b.probability - a.probability);
+        } else {
+            throw new Error('No logprobs in response');
+        }
+    }
+
+    async getPredictionsTransformers() {
+        // Load model if not already loaded
+        const model = await this.loadTransformersModel();
+
+        // Generate with the model to get logits
+        // Note: transformers.js doesn't directly expose logprobs,
+        // so we'll generate multiple samples and estimate probabilities
+        const temperature = parseFloat(document.getElementById('temperature').value);
+
+        // Generate a token with the model
+        const output = await model(this.currentText, {
+            max_new_tokens: 1,
+            temperature: temperature,
+            do_sample: true,
+            return_dict_in_generate: true,
+            output_scores: true,
+            num_return_sequences: 1
+        });
+
+        // For transformers.js, we need to use a different approach
+        // since it doesn't expose logprobs directly. We'll generate multiple
+        // samples with low temperature to estimate token probabilities
+        const samples = {};
+        const numSamples = 100;
+
+        for (let i = 0; i < numSamples; i++) {
+            const result = await model(this.currentText, {
+                max_new_tokens: 1,
+                temperature: Math.max(0.7, temperature),
+                do_sample: true,
+                num_return_sequences: 1
+            });
+
+            // Extract just the new token
+            const generatedText = result[0].generated_text;
+            const newToken = generatedText.slice(this.currentText.length);
+
+            if (newToken) {
+                samples[newToken] = (samples[newToken] || 0) + 1;
+            }
+        }
+
+        // Convert counts to probabilities
+        const totalSamples = Object.values(samples).reduce((a, b) => a + b, 0);
+        this.tokenProbabilities = Object.entries(samples).map(([token, count]) => ({
+            token: token,
+            logprob: Math.log(count / totalSamples),
+            probability: (count / totalSamples) * 100
+        }));
+
+        this.tokenProbabilities.sort((a, b) => b.probability - a.probability);
+
+        // Keep only top 20
+        this.tokenProbabilities = this.tokenProbabilities.slice(0, 20);
     }
 
     updateChart() {
@@ -208,7 +324,6 @@ class TokenVisualizer {
         this.chart.data.labels = labels;
         this.chart.data.datasets[0].data = data;
 
-        // Color the bars with gradient based on probability
         this.chart.data.datasets[0].backgroundColor = topTokens.map((t, i) => {
             const intensity = 1 - (i / topN) * 0.5;
             return `rgba(102, 126, 234, ${intensity})`;
@@ -218,62 +333,50 @@ class TokenVisualizer {
     }
 
     formatToken(token) {
-        // Replace special characters for display
         return token
             .replace(/\n/g, '\\n')
             .replace(/\t/g, '\\t')
-            .replace(/ /g, '·'); // Show spaces as middle dots
+            .replace(/^ $/, '·')
+            .replace(/^$/, '[empty]');
     }
 
     selectNextToken() {
         const temperature = parseFloat(document.getElementById('temperature').value);
 
-        // Temperature-based sampling
         let selectedToken;
         if (temperature === 0 || Math.random() < 0.1) {
-            // Deterministic or mostly pick the top token
             selectedToken = this.tokenProbabilities[0];
         } else {
-            // Sample based on temperature-adjusted probabilities
             selectedToken = this.sampleWithTemperature(temperature);
         }
 
-        // Update display
         this.currentText += selectedToken.token;
         document.getElementById('text-display').textContent = this.currentText;
         document.getElementById('prompt').value = this.currentText;
 
-        // Show selected token
         const displayToken = this.formatToken(selectedToken.token);
         document.getElementById('selected-display').innerHTML = `
             <span class="token-text">"${displayToken}"</span>
             <span class="token-prob">${selectedToken.probability.toFixed(2)}%</span>
         `;
 
-        // Highlight the selected token in the chart
         this.highlightSelectedToken(selectedToken.token);
-
-        // Disable next button until new predictions are fetched
         document.getElementById('next-btn').disabled = true;
 
-        // Auto-fetch next predictions after a short delay
         setTimeout(() => {
             this.getPredictions();
         }, 500);
     }
 
     sampleWithTemperature(temperature) {
-        // Apply temperature to probabilities
         const temps = this.tokenProbabilities.map(t => ({
             ...t,
             adjustedProb: Math.pow(Math.exp(t.logprob), 1 / temperature)
         }));
 
-        // Normalize
         const sum = temps.reduce((acc, t) => acc + t.adjustedProb, 0);
         temps.forEach(t => t.normalizedProb = t.adjustedProb / sum);
 
-        // Sample
         const random = Math.random();
         let cumulative = 0;
 
@@ -284,7 +387,7 @@ class TokenVisualizer {
             }
         }
 
-        return temps[0]; // Fallback
+        return temps[0];
     }
 
     highlightSelectedToken(token) {
@@ -293,7 +396,7 @@ class TokenVisualizer {
 
         this.chart.data.datasets[0].backgroundColor = topTokens.map(t => {
             if (t.token === token) {
-                return 'rgba(237, 137, 54, 0.9)'; // Orange for selected
+                return 'rgba(237, 137, 54, 0.9)';
             }
             const intensity = 1 - (topTokens.indexOf(t) / topN) * 0.5;
             return `rgba(102, 126, 234, ${intensity})`;
@@ -322,6 +425,10 @@ class TokenVisualizer {
 }
 
 // Initialize app when DOM is loaded
-document.addEventListener('DOMContentLoaded', () => {
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+        new TokenVisualizer();
+    });
+} else {
     new TokenVisualizer();
-});
+}
