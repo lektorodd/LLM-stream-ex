@@ -8,6 +8,8 @@ env.allowLocalModels = false;
 
 class TokenVisualizer {
     constructor() {
+        console.log('TokenVisualizer initializing...');
+
         this.currentText = document.getElementById('prompt').value;
         this.tokenProbabilities = [];
         this.chart = null;
@@ -20,6 +22,9 @@ class TokenVisualizer {
         this.initializeChart();
         this.loadSettings();
         this.updateProviderUI();
+
+        console.log('TokenVisualizer initialized successfully!');
+        console.log('Current provider:', this.provider);
     }
 
     initializeEventListeners() {
@@ -427,8 +432,18 @@ class TokenVisualizer {
 // Initialize app when DOM is loaded
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => {
-        new TokenVisualizer();
+        try {
+            new TokenVisualizer();
+        } catch (error) {
+            console.error('Failed to initialize TokenVisualizer:', error);
+            alert('Failed to initialize app. Please make sure you are running a local server (not opening the file directly). See README for instructions.');
+        }
     });
 } else {
-    new TokenVisualizer();
+    try {
+        new TokenVisualizer();
+    } catch (error) {
+        console.error('Failed to initialize TokenVisualizer:', error);
+        alert('Failed to initialize app. Please make sure you are running a local server (not opening the file directly). See README for instructions.');
+    }
 }

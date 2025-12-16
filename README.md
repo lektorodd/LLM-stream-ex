@@ -24,17 +24,43 @@ An interactive web application for visualizing how Large Language Models predict
 
 ## Setup Instructions
 
-### Quick Start (No API Key Required!)
+### ⚠️ Important: You Must Run a Local Server
 
-1. **Open the application**
-   - Simply open `index.html` in your web browser
-   - The default provider is **Transformers.js** which runs locally - no setup needed!
-   - On first use, it will download the GPT-2 model (~100MB, cached afterward)
+**This app uses ES6 modules and CANNOT be opened directly by double-clicking `index.html`**. You must run a local web server.
 
-2. **Start exploring!**
-   - Try different prompts
-   - Adjust the temperature to see how it affects selection
-   - Change the number of top tokens displayed
+### Quick Start (3 Easy Options)
+
+**Option 1: Use the startup script (Easiest)**
+```bash
+# On Mac/Linux:
+./start-server.sh
+
+# On Windows:
+start-server.bat
+```
+Then open **http://localhost:8000** in your browser.
+
+**Option 2: Python (if installed)**
+```bash
+# Python 3
+python -m http.server 8000
+
+# Python 2
+python -m SimpleHTTPServer 8000
+```
+Then open **http://localhost:8000** in your browser.
+
+**Option 3: Node.js (if installed)**
+```bash
+npx serve
+```
+Then follow the URL shown in the terminal.
+
+### First Time Use
+
+- The default provider is **Transformers.js** which runs locally - no API key needed!
+- On first use, it will download the GPT-2 model (~100MB, cached afterward)
+- This download happens automatically in the background
 
 ### Using OpenAI API (Optional)
 

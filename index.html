@@ -9,6 +9,12 @@
     <script type="module" src="app.js"></script>
 </head>
 <body>
+    <noscript>
+        <div style="background: #f44336; color: white; padding: 20px; text-align: center; font-size: 18px;">
+            ⚠️ JavaScript is required to run this application. Please enable JavaScript in your browser.
+        </div>
+    </noscript>
+
     <div class="container">
         <header>
             <h1>🔮 LLM Token Visualizer</h1>
@@ -93,5 +99,26 @@
             </ul>
         </div>
     </div>
+
+    <script>
+        // Detect if module failed to load (e.g., when opening file:// directly)
+        window.addEventListener('error', function(event) {
+            if (event.message && event.message.includes('module')) {
+                const container = document.querySelector('.container');
+                if (container) {
+                    const errorBanner = document.createElement('div');
+                    errorBanner.style.cssText = 'background: #f44336; color: white; padding: 20px; margin: 20px 0; border-radius: 10px; text-align: center;';
+                    errorBanner.innerHTML = `
+                        <h3 style="margin: 0 0 10px 0;">⚠️ Module Loading Error</h3>
+                        <p style="margin: 0 0 10px 0;">You must run a local server to use this app. Opening the HTML file directly won't work.</p>
+                        <p style="margin: 0; font-weight: bold;">Run this command in the project directory:</p>
+                        <code style="background: rgba(0,0,0,0.2); padding: 5px 10px; border-radius: 5px; display: inline-block; margin-top: 10px;">python -m http.server 8000</code>
+                        <p style="margin: 10px 0 0 0; font-size: 14px;">Then open <strong>http://localhost:8000</strong> in your browser</p>
+                    `;
+                    container.insertBefore(errorBanner, container.firstChild);
+                }
+            }
+        }, true);
+    </script>
 </body>
 </html>
