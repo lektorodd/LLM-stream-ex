@@ -4,7 +4,7 @@ An interactive web application for visualizing how Large Language Models predict
 
 ## Features
 
-- **Multiple Provider Options**: Choose between free local inference (Transformers.js) or OpenAI API
+- **Multiple Provider Options**: Choose between Ollama (recommended), Transformers.js, or OpenAI API
 - **Real-time Token Predictions**: See the top probable next tokens with their probabilities
 - **Interactive Bar Charts**: Visual representation of token probability distributions
 - **Temperature Control**: Adjust randomness in token selection (0-2 scale)
@@ -58,14 +58,27 @@ Then follow the URL shown in the terminal.
 
 ### First Time Use
 
-- The default provider is **Transformers.js** which runs locally - no API key needed!
-- On first use, it will download the GPT-2 model (~100MB, cached afterward)
-- This download happens automatically in the background
+- The default provider is **Ollama** (local inference with better models)
+- If you don't have Ollama, the app will guide you to install it or switch to another provider
+- Ollama must be running (`ollama serve`) for the app to work
 
-### Using OpenAI API (Optional)
+### Using Ollama (Recommended)
 
-For faster and more capable predictions, you can use OpenAI:
+**Ollama** provides the best balance of speed, quality, and privacy:
 
+1. **Install Ollama** from [ollama.ai](https://ollama.ai)
+2. **Pull a model**: `ollama pull llama3.2` (or llama3.2:1b, mistral, phi3, etc.)
+3. **Start Ollama**: `ollama serve` (runs in background)
+4. **Select your model** from the dropdown in the app
+
+### Using Other Providers
+
+**Transformers.js** (browser-based, no installation):
+- Select "Transformers.js" from the provider dropdown
+- First use downloads GPT-2 model (~100MB, cached afterward)
+- No setup required, but slower than Ollama
+
+**OpenAI API** (cloud-based, fastest):
 1. **Get an API key** from [OpenAI](https://platform.openai.com/api-keys)
 2. **Select "OpenAI API"** from the provider dropdown
 3. **Enter your API key** in the field that appears
@@ -73,32 +86,48 @@ For faster and more capable predictions, you can use OpenAI:
 
 ## Provider Comparison
 
-### Transformers.js (Default)
+### Ollama (Default, Recommended) ⭐
+✅ **Pros:**
+- **Fast inference** (~1-2 seconds per prediction)
+- **Better models** (Llama 3.2, Mistral, Phi3, etc.)
+- **Completely free** - no API costs
+- **100% private** - all processing on your machine
+- **Works offline** after model download
+- **Better than browser-based** inference
+
+❌ **Cons:**
+- Requires Ollama installation
+- Need to download models (1-4GB depending on model)
+- Ollama must be running in background
+
+### Transformers.js
 ✅ **Pros:**
 - Completely free
-- No API key required
+- No installation required
 - Runs locally in browser
-- Privacy-friendly (no data leaves your computer)
+- Privacy-friendly
 - Works offline after first load
 
 ❌ **Cons:**
-- First load takes 1-2 minutes (downloads ~100MB model)
-- Slower inference (2-5 seconds per prediction)
-- Uses GPT-2 (smaller model, less sophisticated)
+- **Slower** (2-5 seconds per prediction, 50 samples needed)
+- Uses GPT-2 (smaller, less sophisticated model)
+- First load takes 1-2 minutes
 - Requires modern browser and decent hardware
+- **Probability estimates** (not true logprobs)
 
 ### OpenAI API
 ✅ **Pros:**
-- Very fast (<1 second per prediction)
-- More capable model (GPT-3.5)
-- Better quality predictions
+- **Fastest** (<1 second per prediction)
+- Most capable model (GPT-3.5)
+- Best quality predictions
+- **True logprobs** from API
 - Works on any device
 
 ❌ **Cons:**
 - Requires API key
-- Costs money (very minimal - few cents per session)
+- **Costs money** (very minimal - few cents per session)
 - Requires internet connection
-- Data sent to OpenAI
+- Data sent to OpenAI (privacy concern)
 
 ## Understanding Temperature
 
@@ -132,15 +161,19 @@ Temperature controls the randomness of token selection:
 - **Frontend**: Vanilla JavaScript ES6 Modules, HTML5, CSS3
 - **Charts**: Chart.js
 - **Providers**:
-  - Transformers.js (Xenova/gpt2) - Browser-based inference via WebAssembly
-  - OpenAI Completions API (gpt-3.5-turbo-instruct)
+  - **Ollama** - Local inference via Ollama API (http://localhost:11434)
+  - **Transformers.js** (Xenova/gpt2) - Browser-based inference via WebAssembly
+  - **OpenAI** Completions API (gpt-3.5-turbo-instruct)
 - **Features Used**:
-  - Logprobs (token probabilities) for OpenAI
-  - Monte Carlo sampling for Transformers.js probability estimation
+  - **Ollama**: Monte Carlo sampling (50 samples) for probability estimation
+  - **OpenAI**: True logprobs from API
+  - **Transformers.js**: Monte Carlo sampling (100 samples) for probability estimation
 
 ## API Costs
 
-**Transformers.js**: Completely free! No API costs.
+**Ollama**: Completely free! Runs locally on your machine.
+
+**Transformers.js**: Completely free! Runs in browser.
 
 **OpenAI API** (optional):
 - Model: `gpt-3.5-turbo-instruct`
@@ -148,6 +181,12 @@ Temperature controls the randomness of token selection:
 - Typical session: A few cents
 
 ## Privacy & Security
+
+**Ollama**:
+- 100% private - all processing happens on your machine
+- No data ever leaves your computer
+- Models stored locally
+- Best privacy option
 
 **Transformers.js**:
 - 100% private - all processing happens in your browser
@@ -160,6 +199,24 @@ Temperature controls the randomness of token selection:
 - Subject to OpenAI's privacy policy
 
 ## Troubleshooting
+
+### Ollama Issues
+
+**"Cannot connect to Ollama" error:**
+- Make sure Ollama is installed: Download from [ollama.ai](https://ollama.ai)
+- Start Ollama service: Run `ollama serve` in terminal
+- Check if Ollama is running: Visit http://localhost:11434 in browser
+- Pull a model if you haven't: `ollama pull llama3.2`
+
+**Slow predictions:**
+- Normal - Ollama makes 50 API calls to estimate probabilities
+- Smaller models are faster: Try `llama3.2:1b` instead of full `llama3.2`
+- Takes ~10-20 seconds for probability estimation (one-time per token)
+
+**Model not found:**
+- List installed models: `ollama list`
+- Pull the model you want: `ollama pull <model-name>`
+- Select it from the dropdown in the app
 
 ### Transformers.js Issues
 

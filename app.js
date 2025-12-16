@@ -14,7 +14,8 @@ class TokenVisualizer {
         this.tokenProbabilities = [];
         this.chart = null;
         this.apiKey = localStorage.getItem('openai_api_key') || '';
-        this.provider = localStorage.getItem('provider') || 'transformers';
+        this.provider = localStorage.getItem('provider') || 'ollama';
+        this.ollamaModel = localStorage.getItem('ollama_model') || 'llama3.2';
         this.model = null;
         this.modelLoading = false;
 
@@ -33,6 +34,12 @@ class TokenVisualizer {
             this.provider = e.target.value;
             localStorage.setItem('provider', this.provider);
             this.updateProviderUI();
+        });
+
+        // Ollama model selection
+        document.getElementById('ollama-model').addEventListener('change', (e) => {
+            this.ollamaModel = e.target.value;
+            localStorage.setItem('ollama_model', this.ollamaModel);
         });
 
         // Temperature slider
@@ -72,20 +79,29 @@ class TokenVisualizer {
             document.getElementById('api-key').value = this.apiKey;
         }
         document.getElementById('provider').value = this.provider;
+        document.getElementById('ollama-model').value = this.ollamaModel;
     }
 
     updateProviderUI() {
         const apiKeySection = document.getElementById('api-key-setting');
+        const ollamaModelSection = document.getElementById('ollama-model-setting');
         const providerInfo = document.getElementById('provider-info');
 
-        if (this.provider === 'openai') {
+        // Hide all optional sections first
+        apiKeySection.style.display = 'none';
+        ollamaModelSection.style.display = 'none';
+
+        if (this.provider === 'ollama') {
+            ollamaModelSection.style.display = 'flex';
+            providerInfo.textContent = 'Fast local inference - requires Ollama installed';
+            providerInfo.style.color = '#48bb78';
+        } else if (this.provider === 'openai') {
             apiKeySection.style.display = 'flex';
             providerInfo.textContent = 'Requires API key - faster and more capable';
             providerInfo.style.color = '#667eea';
-        } else {
-            apiKeySection.style.display = 'none';
-            providerInfo.textContent = 'Runs locally in your browser - no API key needed!';
-            providerInfo.style.color = '#48bb78';
+        } else if (this.provider === 'transformers') {
+            providerInfo.textContent = 'Runs in your browser - no API key needed (slower)';
+            providerInfo.style.color = '#ed8936';
         }
     }
 
@@ -199,7 +215,9 @@ class TokenVisualizer {
         predictBtn.textContent = 'Loading...';
 
         try {
-            if (this.provider === 'openai') {
+            if (this.provider === 'ollama') {
+                await this.getPredictionsOllama();
+            } else if (this.provider === 'openai') {
                 await this.getPredictionsOpenAI();
             } else {
                 await this.getPredictionsTransformers();
@@ -214,6 +232,111 @@ class TokenVisualizer {
         } finally {
             predictBtn.disabled = false;
             predictBtn.textContent = 'Get Predictions';
+        }
+    }
+
+    async getPredictionsOllama() {
+        const temperature = parseFloat(document.getElementById('temperature').value);
+        const model = this.ollamaModel;
+
+        try {
+            const response = await fetch('http://localhost:11434/api/generate', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    model: model,
+                    prompt: this.currentText,
+                    stream: false,
+                    options: {
+                        temperature: temperature,
+                        num_predict: 1,
+                    },
+                    // Request token probabilities
+                    raw: false,
+                })
+            });
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`Ollama API error: ${response.status} - ${errorText}`);
+            }
+
+            const data = await response.json();
+
+            // Now make a second call to get probabilities for potential next tokens
+            // We'll use the completion API with multiple samples
+            const probResponse = await fetch('http://localhost:11434/api/generate', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    model: model,
+                    prompt: this.currentText,
+                    stream: false,
+                    options: {
+                        temperature: 1.0,
+                        num_predict: 1,
+                        top_k: 50,
+                        top_p: 1.0,
+                    },
+                })
+            });
+
+            if (!probResponse.ok) {
+                throw new Error('Failed to get token probabilities from Ollama');
+            }
+
+            // Sample multiple times to estimate probabilities
+            const samples = {};
+            const numSamples = 50;
+
+            for (let i = 0; i < numSamples; i++) {
+                const sampleResponse = await fetch('http://localhost:11434/api/generate', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        model: model,
+                        prompt: this.currentText,
+                        stream: false,
+                        options: {
+                            temperature: 0.8,
+                            num_predict: 1,
+                        },
+                    })
+                });
+
+                if (sampleResponse.ok) {
+                    const sampleData = await sampleResponse.json();
+                    const token = sampleData.response;
+                    if (token) {
+                        samples[token] = (samples[token] || 0) + 1;
+                    }
+                }
+            }
+
+            // Convert counts to probabilities
+            const totalSamples = Object.values(samples).reduce((a, b) => a + b, 0);
+            this.tokenProbabilities = Object.entries(samples).map(([token, count]) => ({
+                token: token,
+                logprob: Math.log(count / totalSamples),
+                probability: (count / totalSamples) * 100
+            }));
+
+            this.tokenProbabilities.sort((a, b) => b.probability - a.probability);
+
+            // Keep top 20
+            this.tokenProbabilities = this.tokenProbabilities.slice(0, 20);
+
+        } catch (error) {
+            if (error.message.includes('fetch')) {
+                throw new Error('Cannot connect to Ollama. Make sure Ollama is running (ollama serve)');
+            }
+            throw error;
         }
     }
 
